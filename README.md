@@ -1,4 +1,5 @@
 # testMonero
+## Compilation on Ubuntu 18.04
 Before of all, you must install Monero with this command (tested on Ubuntu 18.04):
 ```
 sudo apt update
@@ -13,9 +14,21 @@ cd monero/
 
 USE_SINGLE_BUILDDIR=1 make -j#core
 ```
-Use cmake filet to create a dynamic Makefile
+##### Compile the testMonero
+
+Once the Monero is compiles, the testMonero can be downloaded and compiled
+as follows:
+
 ```
-cmake -D=path/to/monero/dir
+# make a build folder and enter it
+mkdir build && cd build
+
+# create the makefile
+cmake -DMONERO_DIR=/path/to/monero_folder ..
+
+# compile
+make
 ```
+
 
 

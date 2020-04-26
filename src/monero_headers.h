@@ -42,6 +42,8 @@
 
 #include "string_coding.h"
 
+#include "crypto/crypto-ops.h"
+#include "crypto/hash.h"
 
 #endif //XMREG01_MONERO_HEADERS_H_H
 

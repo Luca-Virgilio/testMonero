@@ -165,7 +165,7 @@ int main()
 
 	// simple as veryfing if a given key_image exist in our vector.
 	std::vector<crypto::key_image> key_images_admin;
-	std::vector<xmreg::transfer_details> found_outputs;
+	std::vector<crypto::public_key> admin_outputs;
 
 	for (uint64_t i = 160; i < height; ++i)
 	{
@@ -180,7 +180,7 @@ int main()
 			std::cerr << e.what() << '\n';
 			continue;
 		}
-		std::cout << "Analysing block\t"<< i << '\t' << mktime << std::endl;
+		std::cout << "Analysing block\t" << i << '\t' << mktime << std::endl;
 
 		// get all transactions in the block found
 		// initialize the first list with transaction for solving
@@ -199,23 +199,35 @@ int main()
 		{
 			crypto::hash tx_hash = cryptonote::get_transaction_hash(tx);
 
-				try
+			try
+			{
+				// output only our outputs
+
+				std::vector<xmreg::transfer_details> admin_found = xmreg::get_belonging_outputs(
+					blk, tx, address, prv_view_key, i);
+				if (admin_found.size() != 0)
 				{
-					// output only our outputs
-					found_outputs = xmreg::get_belonging_outputs(
-						blk, tx, address, prv_view_key, i);
+					for (auto i = admin_found.begin(); i != admin_found.end(); ++i)
+					{
+						std::cout << *i << '\n';
+						std::cout << i->out_pub_key << '\n';
+						admin_outputs.push_back(i->out_pub_key);
+					}
 				}
-				catch (std::exception const &e)
-				{
-					std::cerr << e.what() << " for tx: " << epee::string_tools::pod_to_hex(tx_hash)
-							  << " Skipping this tx!" << std::endl;
-					continue;
-				}
+			}
+			catch (std::exception const &e)
+			{
+				std::cerr << e.what() << " for tx: " << epee::string_tools::pod_to_hex(tx_hash)
+						  << " Skipping this tx!" << std::endl;
+				continue;
+			}
 		}
 	}
-	std::cout << "print vector output" << '\n';
-		for (auto i = found_outputs.begin(); i != found_outputs.end(); ++i)
-    		std::cout << *i << ' ';
+	std::cout << "print vector output:" << '\n';
+	for (auto i = admin_outputs.begin(); i != admin_outputs.end(); ++i)
+	{
+		std::cout << *i << '\n';
+	}
 
 	return 0;
 }

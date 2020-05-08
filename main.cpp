@@ -108,8 +108,8 @@ int main()
 
 	// parse string representing given monero address
 	cryptonote::address_parse_info address_info;
-	std::string address_str = "59y5wNUMuKgZ9xgwGdY2Tb1bmu6WLrjvDcoC2T2Fxmek9VQ2ASc2hrVLJBmDnRJJttLUyqiKArPw3dqse7DKcNG6SUUL2QU";
-	std::string viewkey_str = "42f1078af565a473bf34328fa9c0d1a0baf958acbe435fc6552486fa54699a0c";
+	std::string address_str = "58EnGZ7JPUyTANYYmZWizYfZoAjnVuWvP3FsMCF74UJHVsMnT3dkHfuFCucwK5xJ7MKAizex3RhA3DnYTXRw7rFw6vFniAU";
+	std::string viewkey_str = "8a12073d5292a8e99a7eec4f70c5d24c2cef3290121e61b9fd916ed0461dd300";
 	std::string spendkey_str = "";
 
 	bool SPEND_KEY_GIVEN = false;
@@ -164,10 +164,11 @@ int main()
 	std::cout << '\n';
 
 	// simple as veryfing if a given key_image exist in our vector.
-	std::vector<crypto::key_image> key_images_admin;
+	// old //
+	//std::vector<crypto::key_image> key_images_admin;
 	std::vector<crypto::public_key> admin_outputs;
 
-	for (uint64_t i = 160; i < height; ++i)
+	for (uint64_t i = 0; i < height; ++i)
 	{
 		cryptonote::block blk;
 
@@ -202,15 +203,15 @@ int main()
 			try
 			{
 				// output only our outputs
-
-				std::vector<xmreg::transfer_details> admin_found = xmreg::get_belonging_outputs(
+				std::vector<xmreg::transfer_details> admin_outputs_founded = xmreg::get_belonging_outputs(
 					blk, tx, address, prv_view_key, i);
-				if (admin_found.size() != 0)
+				if (admin_outputs_founded.size() != 0)
 				{
-					for (auto i = admin_found.begin(); i != admin_found.end(); ++i)
+					std::cout << admin_outputs_founded.size() << " admin outputs fount at " << i << '\n';
+					for (auto i = admin_outputs_founded.begin(); i != admin_outputs_founded.end(); ++i)
 					{
-						std::cout << *i << '\n';
-						std::cout << i->out_pub_key << '\n';
+						// std::cout << *i << '\n';
+						// std::cout << i->out_pub_key << '\n';
 						admin_outputs.push_back(i->out_pub_key);
 					}
 				}
@@ -221,13 +222,105 @@ int main()
 						  << " Skipping this tx!" << std::endl;
 				continue;
 			}
+			// thus check for inputs,
+			// we want to check only if our outputs were used
+			// as ring members somewhere 483
+			size_t input_no = tx.vin.size();
+			// to delte //std::cout << "txin_to_key" << typeid(cryptonote::txin_to_key)) <<"\n";
+			if (input_no > 0)
+			{
+				std::cout << "input mixin " << input_no << "\n";
+				if (tx.vin[0].type() == typeid(cryptonote::txin_to_key))
+					std::cout << "found " << input_no << " inputs in block " << i << '\n';
+			}
+
+			for (size_t ii = 0; ii < input_no; ++ii)
+			{
+
+				if (tx.vin[ii].type() != typeid(cryptonote::txin_to_key))
+					continue;
+
+				// get tx input key
+				const cryptonote::txin_to_key &tx_in_to_key = boost::get<cryptonote::txin_to_key>(tx.vin[ii]);
+				uint64_t xmr_amount = tx_in_to_key.amount;
+
+				if (!(rct::scalarmultKey(rct::ki2rct(tx_in_to_key.k_image),
+										 rct::curveOrder()) == rct::identity()))
+				{
+					std::cerr << "Found key image with wrong domain: "
+							  << epee::string_tools::pod_to_hex(tx_in_to_key.k_image)
+							  << " in tx: " << epee::string_tools::pod_to_hex(tx_hash)
+							  << std::endl;
+					return 1;
+				}
+
+				// get absolute offsets of mixins
+				std::vector<uint64_t> absolute_offsets = cryptonote::relative_output_offsets_to_absolute(tx_in_to_key.key_offsets);
+				std::vector<cryptonote::output_data_t> mixin_outputs;
+
+				std::cout << "absolute offsets:" << '\n';
+				for (auto ab = absolute_offsets.begin(); ab != absolute_offsets.end(); ++ab)
+				{
+					std::cout << *ab << '\n';
+				}
+
+				try
+				{
+					core_storage->get_db().get_output_key(
+						epee::span<uint64_t const>(&xmr_amount, 1),
+						absolute_offsets, mixin_outputs);
+				}
+				catch (const cryptonote::OUTPUT_DNE &e)
+				{
+					std::cerr << "Mixins key images not found" << '\n';
+					continue;
+				}
+				// mixin counter
+				size_t count = 0;
+
+				// for each found output public key check if its ours or not
+				for (const uint64_t &abs_offset : absolute_offsets)
+				{
+					// get basic information about mixn's output
+					cryptonote::output_data_t output_data = mixin_outputs.at(count);
+
+					// check our known outputs cash
+					// if the key exists
+
+					std::cout << "pubkey: " << output_data.pubkey << "\n";
+					auto it = std::find_if(
+						admin_outputs.begin(),
+						admin_outputs.end(),
+						[&](const crypto::public_key &known_key) {
+							return output_data.pubkey == known_key;
+						});
+
+					if (it == admin_outputs.end())
+					{
+						// this mixins's output is unknown.
+						std::cout << "mixins's output is unkonwn"
+								  << "\n";
+						++count;
+						continue;
+					}
+
+					// this seems to be our mixin.
+					std::cout << "- found output as ring member: " << (count + 1)
+							  << "\n"
+							  << "key: " << *it
+							  << "\t"
+							  << "tx_hash: "
+							  << tx_hash << '\n';
+					++count;
+				}
+			}
 		}
 	}
-	std::cout << "print vector output:" << '\n';
-	for (auto i = admin_outputs.begin(); i != admin_outputs.end(); ++i)
-	{
-		std::cout << *i << '\n';
-	}
+	// std::cout << "print vector output:" << '\n';
+	// for (auto i = admin_outputs.begin(); i != admin_outputs.end(); ++i)
+	// {
+	// 	std::cout << *i << '\n';
+	// }
 
 	return 0;
 }

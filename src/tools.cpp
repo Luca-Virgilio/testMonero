@@ -616,7 +616,7 @@ namespace xmreg
         return make_pair(empty_time, scale);
     }
 
-
+/*
     bool
     decode_ringct(const rct::rctSig& rv,
                   const crypto::public_key& pub,
@@ -665,6 +665,63 @@ namespace xmreg
         catch (const std::exception &e)
         {
             cerr << "Failed to decode input " << i << endl;
+            return false;
+        }
+
+        return true;
+    }
+*/
+    bool
+    decode_ringct(const rct::rctSig& rv,
+                  const crypto::public_key& pub,
+                  const crypto::secret_key& sec,
+                  unsigned int i,
+                  rct::key& mask,
+                  uint64_t& amount)
+    {
+        crypto::key_derivation derivation;
+
+        bool r = crypto::generate_key_derivation(pub, sec, derivation);
+
+        if (!r)
+        {
+            cerr <<"Failed to generate key derivation to decode rct output " << i << endl;
+            return false;
+        }
+
+   
+        try
+        {
+            crypto::secret_key scalar1;
+
+            crypto::derivation_to_scalar(derivation, i, scalar1);
+
+            switch (rv.type)
+            {
+                case rct::RCTTypeSimple:
+                case rct::RCTTypeBulletproof:
+                case rct::RCTTypeBulletproof2:
+                    amount = rct::decodeRctSimple(rv,
+                                                rct::sk2rct(scalar1),
+                                                i,
+                                                mask,
+                                                hw::get_device("default"));
+                    break;
+                case rct::RCTTypeFull:
+                    amount = rct::decodeRct(rv,
+                                            rct::sk2rct(scalar1),
+                                            i,
+                                            mask,
+                                            hw::get_device("default"));
+                    break;
+                default:
+                    cerr << "Unsupported rct type: " << rv.type << '\n';
+                    return false;
+            }
+        }
+        catch (...)
+        {
+            cerr << "Failed to decode input " << i << '\n';
             return false;
         }
 

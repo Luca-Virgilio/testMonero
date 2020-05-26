@@ -26,6 +26,9 @@ mkdir build && cd build
 # create the makefile
 cmake -DMONERO_DIR=/path/to/monero_folder ..
 
+# enter in folder build 
+cd build 
+
 # compile
 make
 ```

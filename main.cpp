@@ -210,7 +210,7 @@ int main()
 					std::cout << admin_outputs_founded.size() << " admin outputs fount at " << i << '\n';
 					for (auto i = admin_outputs_founded.begin(); i != admin_outputs_founded.end(); ++i)
 					{
-						// std::cout << *i << '\n';
+						 std::cout << *i << '\n';
 						// std::cout << i->out_pub_key << '\n';
 						admin_outputs.push_back(i->out_pub_key);
 					}

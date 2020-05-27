@@ -17,7 +17,7 @@ T get_key_from_hash(crypto::hash &in_hash)
 
 namespace epee
 {
-unsigned int g_test_dbg_lock_sleep = 0;
+	unsigned int g_test_dbg_lock_sleep = 0;
 }
 
 int main()
@@ -167,6 +167,8 @@ int main()
 	// old //
 	//std::vector<crypto::key_image> key_images_admin;
 	std::vector<crypto::public_key> admin_outputs;
+	// verified public key, output of admin transactions
+	std::vector<crypto::public_key> verified_outputs;
 
 	for (uint64_t i = 0; i < height; ++i)
 	{
@@ -210,7 +212,7 @@ int main()
 					std::cout << admin_outputs_founded.size() << " admin outputs fount at " << i << '\n';
 					for (auto i = admin_outputs_founded.begin(); i != admin_outputs_founded.end(); ++i)
 					{
-						 std::cout << *i << '\n';
+						std::cout << *i << '\n';
 						// std::cout << i->out_pub_key << '\n';
 						admin_outputs.push_back(i->out_pub_key);
 					}
@@ -278,6 +280,8 @@ int main()
 				// mixin counter
 				size_t count = 0;
 
+				//flag for valid outputs
+				bool isCorrect = true;
 				// for each found output public key check if its ours or not
 				for (const uint64_t &abs_offset : absolute_offsets)
 				{
@@ -296,22 +300,56 @@ int main()
 						});
 
 					if (it == admin_outputs.end())
-					{
-						// this mixins's output is unknown.
-						std::cout << "mixins's output is unkonwn"
-								  << "\n";
-						++count;
-						continue;
-					}
+					{	
+						isCorrect = false;
 
-					// this seems to be our mixin.
-					std::cout << "- found output as ring member: " << (count + 1)
-							  << "\n"
-							  << "key: " << *it
-							  << "\t"
-							  << "tx_hash: "
-							  << tx_hash << '\n';
-					++count;
+						auto ver_it = std::find_if(
+							verified_outputs.begin(),
+							verified_outputs.end(),
+							[&](const crypto::public_key &known_key) {
+								return output_data.pubkey == known_key;
+							});
+
+						if (ver_it == verified_outputs.end())
+						{
+							// this mixins's output is unknown.
+							std::cout << "mixins's output is unkonwn"
+									  << " UNACCEPTABLE TRANSACTIONS!!!"
+									  << "\n";
+							++count;
+							continue;
+						}
+						else
+						{
+							std::cout << "- found output VERIFIED as ring member: " << (count + 1)
+									  << "\n"
+									  << "pub key: " << *ver_it
+									  << "\t"
+									  << "tx_hash: "
+									  << tx_hash << '\n';
+							++count;
+						}
+					}
+					else
+					{
+						// this seems to be admin mixin.
+						std::cout << "- found output as ring member: " << (count + 1)
+								  << "\n"
+								  << "pub key: " << *it
+								  << "\t"
+								  << "tx_hash: "
+								  << tx_hash << '\n';
+						++count;
+					}
+				}
+				if (isCorrect)
+				{
+					// get tx output public key
+					// const cryptonote::txin_to_key &tx_in_to_key = boost::get<cryptonote::txin_to_key>(tx.vin[ii]);
+					const cryptonote::txout_to_key tx_out_to_key = boost::get<cryptonote::txout_to_key>(tx.vout[ii].target);
+					std::cout << tx_out_to_key.key << " is a valid output"
+							  << "\n";
+					verified_outputs.push_back(tx_out_to_key.key);
 				}
 			}
 		}

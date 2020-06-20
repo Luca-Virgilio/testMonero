@@ -197,33 +197,33 @@ int main()
 			continue;
 		}
 
-		std::cout << "transaction in block\t" << i << '\n';
+		// std::cout << "transaction in block\t" << i << '\n';
 		for (const cryptonote::transaction &tx : txs)
 		{
 			crypto::hash tx_hash = cryptonote::get_transaction_hash(tx);
 
-			try
-			{
+			// try
+			// {
 				// output only our outputs
 				std::vector<xmreg::transfer_details> admin_outputs_founded = xmreg::get_belonging_outputs(
 					blk, tx, address, prv_view_key, i);
 				if (admin_outputs_founded.size() != 0)
 				{
-					std::cout << admin_outputs_founded.size() << " admin outputs fount at " << i << '\n';
+					std::cout << admin_outputs_founded.size() << " admin outputs found" << '\n';
 					for (auto i = admin_outputs_founded.begin(); i != admin_outputs_founded.end(); ++i)
 					{
-						std::cout << *i << '\n';
+						// std::cout << "tx: " << tx_hash << " admin outputs:" << i->out_pub_key << '\n';
 						// std::cout << i->out_pub_key << '\n';
 						admin_outputs.push_back(i->out_pub_key);
 					}
 				}
-			}
-			catch (std::exception const &e)
-			{
-				std::cerr << e.what() << " for tx: " << epee::string_tools::pod_to_hex(tx_hash)
-						  << " Skipping this tx!" << std::endl;
-				continue;
-			}
+			// }
+			// catch (std::exception const &e)
+			// {
+			// 	std::cerr << e.what() << " for tx: " << epee::string_tools::pod_to_hex(tx_hash)
+			// 			  << " Skipping this tx!" << std::endl;
+			// 	continue;
+			// }
 			// thus check for inputs,
 			// we want to check only if our outputs were used
 			// as ring members somewhere 483
@@ -231,11 +231,13 @@ int main()
 			// to delte //std::cout << "txin_to_key" << typeid(cryptonote::txin_to_key)) <<"\n";
 			if (input_no > 0)
 			{
-				std::cout << "input mixin " << input_no << "\n";
+				std::cout << tx_hash <<"total input tx (mixin): " << input_no << "\n";
 				if (tx.vin[0].type() == typeid(cryptonote::txin_to_key))
 					std::cout << "found " << input_no << " inputs in block " << i << '\n';
 			}
-
+			
+			//flag for valid outputs
+			bool isCorrect = true;
 			for (size_t ii = 0; ii < input_no; ++ii)
 			{
 
@@ -263,8 +265,9 @@ int main()
 				std::cout << "absolute offsets:" << '\n';
 				for (auto ab = absolute_offsets.begin(); ab != absolute_offsets.end(); ++ab)
 				{
-					std::cout << *ab << '\n';
+					std::cout << *ab << '\t';
 				}
+					std::cout << '\n';
 
 				try
 				{
@@ -280,8 +283,7 @@ int main()
 				// mixin counter
 				size_t count = 0;
 
-				//flag for valid outputs
-				bool isCorrect = true;
+				
 				// for each found output public key check if its ours or not
 				for (const uint64_t &abs_offset : absolute_offsets)
 				{
@@ -313,7 +315,7 @@ int main()
 						if (ver_it == verified_outputs.end())
 						{
 							// this mixins's output is unknown.
-							std::cout << "mixins's output is unkonwn"
+							std::cout << "\t" << "mixins's output is unkonwn"
 									  << " UNACCEPTABLE TRANSACTIONS!!!"
 									  << "\n";
 							++count;
@@ -321,7 +323,7 @@ int main()
 						}
 						else
 						{
-							std::cout << "- found output VERIFIED as ring member: " << (count + 1)
+							std::cout << "\t" << "- found output VERIFIED as ring member: " << (count + 1)
 									  << "\n"
 									  << "pub key: " << *ver_it
 									  << "\t"
@@ -333,7 +335,7 @@ int main()
 					else
 					{
 						// this seems to be admin mixin.
-						std::cout << "- found output as ring member: " << (count + 1)
+						std::cout << "\t" << "- found output as ring member: " << (count + 1)
 								  << "\n"
 								  << "pub key: " << *it
 								  << "\t"
@@ -342,16 +344,30 @@ int main()
 						++count;
 					}
 				}
-				if (isCorrect)
-				{
-					// get tx output public key
-					// const cryptonote::txin_to_key &tx_in_to_key = boost::get<cryptonote::txin_to_key>(tx.vin[ii]);
-					const cryptonote::txout_to_key tx_out_to_key = boost::get<cryptonote::txout_to_key>(tx.vout[ii].target);
-					std::cout << tx_out_to_key.key << " is a valid output"
-							  << "\n";
-					verified_outputs.push_back(tx_out_to_key.key);
-				}
+				
 			}
+			std::cout << tx_hash << "has " << tx.vout.size() << " outputs"<< "\n";
+			if (isCorrect)
+			{
+				//output that doesn't belong to admin are verified
+				for (size_t t=0; t< tx.vout.size(); t++){
+					const cryptonote::txout_to_key tx_out_to_key = boost::get<cryptonote::txout_to_key>(tx.vout[t].target);
+					auto other_out = std::find_if(
+							admin_outputs_founded.begin(),
+							admin_outputs_founded.end(),
+							[&](const xmreg::transfer_details &admin_output) {
+								return admin_output.out_pub_key == tx_out_to_key.key;
+							});
+					if(other_out!= admin_outputs_founded.end()){
+						std::cout << "\t"<< tx_out_to_key.key << " is a admin output" << "\n";
+					}else {
+						std::cout << "\t"<< tx_out_to_key.key << " is a valid output"
+							<< "\n";
+						verified_outputs.push_back(tx_out_to_key.key);
+					}
+					
+				}
+			} else { std::cout << tx_hash << "output not verified" << "\n";}
 		}
 	}
 	// std::cout << "print vector output:" << '\n';

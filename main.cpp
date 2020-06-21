@@ -347,6 +347,10 @@ int main()
 				
 			}
 			std::cout << tx_hash << "has " << tx.vout.size() << " outputs"<< "\n";
+			std::vector<uint64_t> out_indexs;
+			if(core_storage->get_tx_outputs_gindexs(tx_hash,out_indexs)){
+				// compute global index.
+			}
 			if (isCorrect)
 			{
 				//output that doesn't belong to admin are verified
@@ -359,9 +363,10 @@ int main()
 								return admin_output.out_pub_key == tx_out_to_key.key;
 							});
 					if(other_out!= admin_outputs_founded.end()){
-						std::cout << "\t"<< tx_out_to_key.key << " is a admin output" << "\n";
+						std::cout << "\t"<< tx_out_to_key.key << " is a admin output " << "with global index: " << out_indexs[t]<< "\n";
+					
 					}else {
-						std::cout << "\t"<< tx_out_to_key.key << " is a valid output"
+						std::cout << "\t"<< tx_out_to_key.key << " is a valid output " << "with global index: " << out_indexs[t]
 							<< "\n";
 						verified_outputs.push_back(tx_out_to_key.key);
 					}

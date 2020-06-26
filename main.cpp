@@ -354,7 +354,7 @@ int main()
 			{
 				// compute global index.
 			}
-
+			if(is_coinbase(tx)) isCorrect = false;
 			//output that doesn't belong to admin are verified
 			for (size_t t = 0; t < tx.vout.size(); t++)
 			{

@@ -29,6 +29,8 @@ cmake -DMONERO_DIR=/path/to/monero_folder ..
 # enter in folder build 
 cd build 
 
+#install library pcsclite 
+apt-get install libpcsclite-dev
 # compile
 make
 ```

@@ -170,7 +170,7 @@ int main()
 	// verified public key, output of admin transactions
 	std::vector<crypto::public_key> verified_outputs;
 
-	for (uint64_t i = 0; i < height; ++i)
+	for (uint64_t i = 0; i < 201; ++i)
 	{
 		cryptonote::block blk;
 
